@@ -1,0 +1,29 @@
+{
+  "name": "automate",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@openrouter/sdk": "^0.9.11",
+    "axios": "^1.13.4",
+    "dommatrix": "^0.1.1",
+    "dotenv": "^17.3.1",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "fs": "^0.0.1-security",
+    "mongoose": "^9.2.3",
+    "node-poppler": "^9.1.1",
+    "openai": "^6.25.0",
+    "pdf-parse": "^2.4.5",
+    "pdf-parser": "^1.0.5",
+    "pdfjs-dist": "^5.5.207",
+    "socks-proxy-agent": "^8.0.5",
+    "undici": "^7.22.0"
+  }
+}

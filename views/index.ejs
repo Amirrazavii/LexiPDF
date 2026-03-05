@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vocabulary Manager</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <h1>Vocabulary Manager</h1>
+
+    <h2>Add New Word</h2>
+    <form id="add-word-form">
+        <input type="text" name="word" placeholder="Word" required>
+        <input type="text" name="type" placeholder="Type">
+        <input type="text" name="pos" placeholder="POS">
+        <input type="text" name="translation" placeholder="Translation">
+        <input type="text" name="example" placeholder="Example">
+        <input type="text" name="context" placeholder="Context">
+        <input type="number" name="page" placeholder="Page">
+        <button type="submit">Add</button>
+    </form>
+    <div id="add-result"></div>
+
+    <h2>Filter/Search</h2>
+    <form id="filter-form">
+        <input type="text" id="search-word" placeholder="Search Word" value="<%= filters.word || '' %>">
+        <input type="text" id="filter-type" placeholder="Type" value="<%= filters.type || '' %>">
+        <input type="number" id="search-page" placeholder="Page" min="1">
+        <select id="sort-by">
+            <option value="word" <%=filters.sortBy==='word' ?'selected':'' %>>Word</option>
+            <option value="page" <%=filters.sortBy==='page' ?'selected':'' %>>Page</option>
+            <option value="type" <%=filters.sortBy==='type' ?'selected':'' %>>Type</option>
+        </select>
+        <select id="sort-dir">
+            <option value="asc" <%=filters.sortDir==='asc' ?'selected':'' %>>Asc</option>
+            <option value="desc" <%=filters.sortDir==='desc' ?'selected':'' %>>Desc</option>
+        </select>
+        <button type="submit">Filter</button>
+    </form>
+
+    <table id="vocab-table">
+        <thead>
+            <tr>
+                <th>Word</th>
+                <th>Type</th>
+                <th>POS</th>
+                <th>Translation</th>
+                <th>Example</th>
+                <th>Context</th>
+                <th>Page</th>
+                <th>Action</th> <!-- ستون جدید -->
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div class="pagination"></div>
+
+    <script>
+        const pageSize = 10;
+        async function fetchAndRender(page = 1) {
+            const type = document.getElementById('filter-type').value;
+            const word = document.getElementById('search-word').value;
+            const pageInput = document.getElementById('search-page').value;
+            const sortBy = document.getElementById('sort-by').value;
+            const sortDir = document.getElementById('sort-dir').value;
+
+            // اگر کاربر صفحه وارد کرده، از آن استفاده می‌کنیم
+            const pageNumber = pageInput ? parseInt(pageInput) : page;
+
+            const res = await fetch(`/api/search?type=${encodeURIComponent(type)}&word=${encodeURIComponent(word)}&sortBy=${encodeURIComponent(sortBy)}&sortDir=${encodeURIComponent(sortDir)}&page=${pageNumber}`);
+            const data = await res.json();
+            const tbody = document.querySelector('#vocab-table tbody');
+            tbody.innerHTML = '';
+
+            if (data.vocabularies.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No results</td></tr>';
+            } else {
+                data.vocabularies.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                <td>${item.word}</td>
+                <td>${item.type}</td>
+                <td>${item.pos}</td>
+                <td>${item.translation}</td>
+                <td>${item.example}</td>
+                <td>${item.context}</td>
+                <td>${item.page}</td>
+                <td><button class="delete-btn" data-id="${item._id}">Delete</button></td>
+            `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            renderPagination(data.total, pageNumber);
+        }
+
+        function renderPagination(totalItems, currentPage) {
+            const container = document.querySelector('.pagination');
+            container.innerHTML = '';
+            const totalPages = Math.ceil(totalItems / pageSize);
+            for (let i = 1; i <= totalPages; i++) {
+                const a = document.createElement('a');
+                a.href = "#";
+                a.textContent = i;
+                if (i === currentPage) a.classList.add('active');
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    fetchAndRender(i);
+                });
+                container.appendChild(a);
+            }
+        }
+
+        // --- Add Word ---
+        document.getElementById('add-word-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const body = {};
+            formData.forEach((v, k) => body[k] = v);
+
+            try {
+                const res = await fetch('/api/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                const addResult = document.getElementById('add-result');
+                if (res.ok) {
+                    addResult.innerHTML = `<span style="color:green">Added: ${data.word}</span>`;
+                    e.target.reset();
+                    fetchAndRender(1);
+                } else {
+                    addResult.innerHTML = `<span style="color:red">${data.error}</span>`;
+                }
+            } catch (err) {
+                document.getElementById('add-result').innerHTML = `<span style="color:red">${err.message}</span>`;
+            }
+        });
+
+        // --- Filter/Search form ---
+        document.getElementById('filter-form').addEventListener('submit', e => {
+            e.preventDefault();
+            fetchAndRender(1);
+        });
+
+        document.querySelector('#vocab-table tbody').addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                if (!confirm('Are you sure you want to delete this word?')) return;
+
+                try {
+                    const res = await fetch(`/api/delete/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert('Deleted successfully');
+                        fetchAndRender(); // بروزرسانی جدول بعد از حذف
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (err) {
+                    alert('Error: ' + err.message);
+                }
+            }
+        });
+
+        // --- initial render ---
+        fetchAndRender();
+    </script>
+</body>
+
+</html>
