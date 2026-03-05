@@ -31,8 +31,8 @@
 1. Clone the repository / کلون کردن مخزن:
 
 ```bash
-git clone <repo_url>
-cd <repo_folder>
+git clone https://github.com/Amirrazavii/LexiPDF.git
+cd LexiPDF
 
 
 node generate.js 10 20
