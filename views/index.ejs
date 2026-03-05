@@ -11,31 +11,36 @@
     <h1>Vocabulary Manager</h1>
 
     <h2>Add New Word</h2>
-    <form id="add-word-form">
+    <!-- کلاس filter-form را به اینجا هم دادم تا ظاهر مرتبی بگیرد -->
+    <form id="add-word-form" class="filter-form">
         <input type="text" name="word" placeholder="Word" required>
         <input type="text" name="type" placeholder="Type">
         <input type="text" name="pos" placeholder="POS">
         <input type="text" name="translation" placeholder="Translation">
         <input type="text" name="example" placeholder="Example">
         <input type="text" name="context" placeholder="Context">
-        <input type="number" name="page" placeholder="Page">
+        <input type="number" name="page" placeholder="Book Page">
         <button type="submit">Add</button>
     </form>
-    <div id="add-result"></div>
+    <div id="add-result" style="text-align: center; margin-bottom: 20px;"></div>
 
     <h2>Filter/Search</h2>
-    <form id="filter-form">
-        <input type="text" id="search-word" placeholder="Search Word" value="<%= filters.word || '' %>">
-        <input type="text" id="filter-type" placeholder="Type" value="<%= filters.type || '' %>">
-        <input type="number" id="search-page" placeholder="Page" min="1">
+    <!-- اعمال کلاس شما -->
+    <form id="filter-form" class="filter-form">
+        <input type="text" id="search-word" placeholder="Search Word">
+        <input type="text" id="filter-type" placeholder="Type">
+
+        <!-- این فیلد حالا Book Page را می‌گیرد -->
+        <input type="number" id="search-book-page" placeholder="Book Page" min="1">
+
         <select id="sort-by">
-            <option value="word" <%=filters.sortBy==='word' ?'selected':'' %>>Word</option>
-            <option value="page" <%=filters.sortBy==='page' ?'selected':'' %>>Page</option>
-            <option value="type" <%=filters.sortBy==='type' ?'selected':'' %>>Type</option>
+            <option value="word">Word</option>
+            <option value="page">Page</option>
+            <option value="type">Type</option>
         </select>
         <select id="sort-dir">
-            <option value="asc" <%=filters.sortDir==='asc' ?'selected':'' %>>Asc</option>
-            <option value="desc" <%=filters.sortDir==='desc' ?'selected':'' %>>Desc</option>
+            <option value="asc">Asc</option>
+            <option value="desc">Desc</option>
         </select>
         <button type="submit">Filter</button>
     </form>
@@ -50,7 +55,7 @@
                 <th>Example</th>
                 <th>Context</th>
                 <th>Page</th>
-                <th>Action</th> <!-- ستون جدید -->
+                <th>Action</th>
             </tr>
         </thead>
         <tbody></tbody>
@@ -60,66 +65,118 @@
 
     <script>
         const pageSize = 10;
-        async function fetchAndRender(page = 1) {
+
+        async function fetchAndRender(currentPage = 1) {
             const type = document.getElementById('filter-type').value;
             const word = document.getElementById('search-word').value;
-            const pageInput = document.getElementById('search-page').value;
+            // گرفتن شماره صفحه کتاب
+            const bookPage = document.getElementById('search-book-page').value;
             const sortBy = document.getElementById('sort-by').value;
             const sortDir = document.getElementById('sort-dir').value;
 
-            // اگر کاربر صفحه وارد کرده، از آن استفاده می‌کنیم
-            const pageNumber = pageInput ? parseInt(pageInput) : page;
+            // ساخت ایمن URL Parameters
+            const queryParams = new URLSearchParams({
+                page: currentPage,       // برای Skip/Limit در بک‌اند
+                sortBy: sortBy,
+                sortDir: sortDir
+            });
 
-            const res = await fetch(`/api/search?type=${encodeURIComponent(type)}&word=${encodeURIComponent(word)}&sortBy=${encodeURIComponent(sortBy)}&sortDir=${encodeURIComponent(sortDir)}&page=${pageNumber}`);
-            const data = await res.json();
-            const tbody = document.querySelector('#vocab-table tbody');
-            tbody.innerHTML = '';
+            // فقط اگر کاربر مقداری وارد کرده بود، به URL اضافه کن
+            if (type) queryParams.append('type', type);
+            if (word) queryParams.append('word', word);
+            if (bookPage) queryParams.append('bookPage', bookPage);
 
-            if (data.vocabularies.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No results</td></tr>';
-            } else {
-                data.vocabularies.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                <td>${item.word}</td>
-                <td>${item.type}</td>
-                <td>${item.pos}</td>
-                <td>${item.translation}</td>
-                <td>${item.example}</td>
-                <td>${item.context}</td>
-                <td>${item.page}</td>
-                <td><button class="delete-btn" data-id="${item._id}">Delete</button></td>
-            `;
-                    tbody.appendChild(tr);
-                });
+            try {
+                const res = await fetch(`/api/search?${queryParams.toString()}`);
+                const data = await res.json();
+                const tbody = document.querySelector('#vocab-table tbody');
+                tbody.innerHTML = '';
+
+                if (data.vocabularies.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center">No results found</td></tr>';
+                } else {
+                    data.vocabularies.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${item.word || ''}</td>
+                            <td>${item.type || ''}</td>
+                            <td>${item.pos || ''}</td>
+                            <td>${item.translation || ''}</td>
+                            <td>${item.example || ''}</td>
+                            <td>${item.context || ''}</td>
+                            <td>${item.page || ''}</td>
+                            <td><button class="delete-btn" data-id="${item._id}" style="color:red; cursor:pointer;">Delete</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                renderPagination(data.total, currentPage);
+            } catch (err) {
+                console.error("Error fetching data:", err);
             }
-
-            renderPagination(data.total, pageNumber);
         }
 
         function renderPagination(totalItems, currentPage) {
             const container = document.querySelector('.pagination');
             container.innerHTML = '';
             const totalPages = Math.ceil(totalItems / pageSize);
-            for (let i = 1; i <= totalPages; i++) {
+
+            if (totalPages <= 1) return;
+
+            const createButton = (text, pageNum, isActive = false) => {
                 const a = document.createElement('a');
                 a.href = "#";
-                a.textContent = i;
-                if (i === currentPage) a.classList.add('active');
+                a.textContent = text;
+                if (isActive) a.classList.add('active');
                 a.addEventListener('click', (e) => {
                     e.preventDefault();
-                    fetchAndRender(i);
+                    fetchAndRender(pageNum);
                 });
                 container.appendChild(a);
+            };
+
+            const createDots = () => {
+                const span = document.createElement('span');
+                span.textContent = '...';
+                container.appendChild(span);
+            };
+
+            // دکمه قبلی
+            if (currentPage > 1) createButton('«', currentPage - 1);
+
+            // منطق محدود کردن دکمه‌ها (جلوگیری از ساخت ۱۰۰ دکمه)
+            const maxVisible = 5;
+            let start = Math.max(1, currentPage - 2);
+            let end = Math.min(totalPages, start + maxVisible - 1);
+
+            if (end - start < maxVisible - 1) {
+                start = Math.max(1, end - maxVisible + 1);
             }
+
+            if (start > 1) {
+                createButton(1, 1);
+                if (start > 2) createDots();
+            }
+
+            for (let i = start; i <= end; i++) {
+                createButton(i, i, i === currentPage);
+            }
+
+            if (end < totalPages) {
+                if (end < totalPages - 1) createDots();
+                createButton(totalPages, totalPages);
+            }
+
+            // دکمه بعدی
+            if (currentPage < totalPages) createButton('»', currentPage + 1);
         }
 
-        // --- Add Word ---
+        // Add form listener
         document.getElementById('add-word-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const body = {};
-            formData.forEach((v, k) => body[k] = v);
+            const body = Object.fromEntries(formData.entries());
 
             try {
                 const res = await fetch('/api/add', {
@@ -130,7 +187,7 @@
                 const data = await res.json();
                 const addResult = document.getElementById('add-result');
                 if (res.ok) {
-                    addResult.innerHTML = `<span style="color:green">Added: ${data.word}</span>`;
+                    addResult.innerHTML = `<span style="color:green; font-weight:bold;">Added: ${data.word}</span>`;
                     e.target.reset();
                     fetchAndRender(1);
                 } else {
@@ -141,12 +198,13 @@
             }
         });
 
-        // --- Filter/Search form ---
+        // Filter form listener
         document.getElementById('filter-form').addEventListener('submit', e => {
             e.preventDefault();
             fetchAndRender(1);
         });
 
+        // Delete listener (Event Delegation)
         document.querySelector('#vocab-table tbody').addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-btn')) {
                 const id = e.target.dataset.id;
@@ -155,11 +213,10 @@
                 try {
                     const res = await fetch(`/api/delete/${id}`, { method: 'DELETE' });
                     const data = await res.json();
-                    if (data.success) {
-                        alert('Deleted successfully');
-                        fetchAndRender(); // بروزرسانی جدول بعد از حذف
+                    if (data.success || res.ok) {
+                        fetchAndRender(1); // برگشت به صفحه اول بعد از حذف
                     } else {
-                        alert('Error: ' + data.error);
+                        alert('Error: ' + (data.error || 'Failed to delete'));
                     }
                 } catch (err) {
                     alert('Error: ' + err.message);
@@ -167,7 +224,7 @@
             }
         });
 
-        // --- initial render ---
+        // لود اولیه جدول
         fetchAndRender();
     </script>
 </body>

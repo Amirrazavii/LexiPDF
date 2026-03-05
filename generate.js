@@ -62,6 +62,7 @@ async function callAI(prompt, retry = 0) {
         return parsed;
 
     } catch (err) {
+        console.log('err', err)
 
         if (retry < MAX_RETRIES) {
             console.log("Retry request...", retry);
@@ -97,7 +98,7 @@ TASK INSTRUCTIONS
 1. Extract vocabulary items that appear in the text.
 2. Each item MUST belong to **exactly one** of the allowed types below.
 3. Avoid duplicates.
-4. Maximum 30 items.
+4. Maximum 40 items.
 
 -----------------------
 ALLOWED TYPES

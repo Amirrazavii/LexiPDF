@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const vocabularySchema = new mongoose.Schema({
-    word: { type: String, unique: true }, // جلوگیری از تکرار
+    word: { type: String }, // جلوگیری از تکرار
     type: String, // word / phrasal verb / idiom
     pos: String, // Part of Speech
     translation: String, // ترجمه فارسی

@@ -21,15 +21,33 @@ app.use(express.static(path.join(__dirname, "public")));
 
 await mongoose.connect(process.env.MONGO_URI);
 
-// --- روت اصلی با pagination اولیه ---
+// --- تابع کمکی برای امنیت جستجو (جلوگیری از ReDoS) ---
+function escapeRegex(text) {
+    if (!text) return "";
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
+
+// --- روت اصلی (SSR - بارگذاری اولیه صفحه) ---
 app.get("/", async (req, res) => {
-    const { page = 1, type, word, sortBy = "word", sortDir = "asc" } = req.query;
+    // تغییر: اضافه کردن bookPage به مقادیر دریافتی
+    const { page = 1, bookPage, type, word, sortBy = "word", sortDir = "asc" } = req.query;
+
     const filter = {};
     if (type) filter.type = type;
-    if (word) filter.word = { $regex: word, $options: "i" };
+
+    // تغییر: استفاده از تابع امن برای Regex
+    if (word) filter.word = { $regex: escapeRegex(word), $options: "i" };
+
+    // تغییر: اعمال فیلتر شماره صفحه دیتابیس (مانند API)
+    if (bookPage && !isNaN(parseInt(bookPage))) {
+        filter.page = parseInt(bookPage);
+    }
 
     const pageSize = 10;
-    const skip = (parseInt(page) - 1) * pageSize;
+
+    // تغییر: جلوگیری از Crash سرور در صورت وارد کردن صفحه منفی
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const skip = (safePage - 1) * pageSize;
 
     try {
         const total = await Vocabulary.countDocuments(filter);
@@ -38,26 +56,39 @@ app.get("/", async (req, res) => {
             .skip(skip)
             .limit(pageSize);
 
+        // ارسال داده‌ها به فایل index.ejs
         res.render("index", {
             vocabularies,
-            currentPage: parseInt(page),
+            currentPage: safePage,
             totalPages: Math.ceil(total / pageSize),
-            filters: { type, word, sortBy, sortDir }
+            // اضافه کردن bookPage به آبجکت فیلترها تا در فرانت‌اند حفظ شود
+            filters: { type, word, bookPage, sortBy, sortDir }
         });
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error("Route Error:", err);
+        res.status(500).send("Internal Server Error");
     }
 });
 
 // --- API برای AJAX search و pagination ---
 app.get("/api/search", async (req, res) => {
-    const { type, word, sortBy = "word", sortDir = "asc", page = 1 } = req.query;
+    const { type, word, bookPage, sortBy = "word", sortDir = "asc", page = 1 } = req.query;
+
     const filter = {};
     if (type) filter.type = type;
-    if (word) filter.word = { $regex: word, $options: "i" };
+
+    // تغییر: استفاده از تابع امن برای Regex
+    if (word) filter.word = { $regex: escapeRegex(word), $options: "i" };
+
+    if (bookPage && !isNaN(parseInt(bookPage))) {
+        filter.page = parseInt(bookPage);
+    }
 
     const pageSize = 10;
-    const skip = (parseInt(page) - 1) * pageSize;
+
+    // تغییر: جلوگیری از Crash سرور (اعداد منفی)
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const skip = (safePage - 1) * pageSize;
 
     try {
         const total = await Vocabulary.countDocuments(filter);
@@ -65,9 +96,11 @@ app.get("/api/search", async (req, res) => {
             .sort({ [sortBy]: sortDir === "asc" ? 1 : -1 })
             .skip(skip)
             .limit(pageSize);
+
         res.json({ vocabularies, total });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("API Search Error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
@@ -75,25 +108,47 @@ app.get("/api/search", async (req, res) => {
 app.post("/api/add", async (req, res) => {
     const { word, type, pos, translation, example, context, page } = req.body;
     try {
-        const exists = await Vocabulary.findOne({ word });
+        // پاکسازی فاصله‌های اضافی در ابتدا و انتهای کلمه قبل از ذخیره و جستجو
+        const cleanWord = word.trim();
+
+        const exists = await Vocabulary.findOne({ word: cleanWord });
         if (exists) return res.status(400).json({ error: "Word already exists" });
 
-        const newWord = await Vocabulary.create({ word, type, pos, translation, example, context, page });
+        const newWord = await Vocabulary.create({
+            word: cleanWord,
+            type,
+            pos,
+            translation,
+            example,
+            context,
+            page: page ? parseInt(page) : null // اطمینان از اینکه عدد ذخیره می‌شود
+        });
+
         res.json(newWord);
     } catch (err) {
+        console.error("API Add Error:", err);
         res.status(500).json({ error: err.message });
     }
 });
 
+// --- API برای حذف کلمه ---
 app.delete("/api/delete/:id", async (req, res) => {
     const { id } = req.params;
     try {
-        await Vocabulary.findByIdAndDelete(id);
+        const deletedWord = await Vocabulary.findByIdAndDelete(id);
+
+        if (!deletedWord) {
+            return res.status(404).json({ error: "Word not found" });
+        }
+
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("API Delete Error:", err);
+        // جلوگیری از کرش وقتی که آیدی فرمت درستی برای MongoDB ندارد
+        res.status(500).json({ error: "Failed to delete word. Invalid ID." });
     }
 });
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
