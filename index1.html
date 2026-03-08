@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>استخراج متن از PDF در مرورگر</title>
+    <style>
+        body {
+            font-family: Tahoma, sans-serif;
+            padding: 20px;
+        }
+
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f4f4f4;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+            height: 400px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            color: blue;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>فایل PDF خود را انتخاب کنید</h2>
+    <!-- اصل امنیت: کاربر باید خودش فایل را به مرورگر معرفی کند -->
+    <input type="file" id="pdf-upload" accept="application/pdf" />
+
+    <div id="output">متن استخراج شده اینجا نمایش داده می‌شود...</div>
+
+    <!-- استفاده از ESM برای وارد کردن کتابخانه مستقیماً از CDN -->
+    <script type="module">
+        // وارد کردن هسته اصلی PDF.js
+        import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.mjs';
+
+        // تنظیم Worker (برای جلوگیری از فریز شدن صفحه هنگام پردازش فایل‌های سنگین)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.mjs';
+
+        const fileInput = document.getElementById('pdf-upload');
+        const outputDiv = document.getElementById('output');
+
+        // گوش دادن به رویداد انتخاب فایل توسط کاربر
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            outputDiv.innerHTML = '<span class="loading">در حال پردازش PDF... لطفاً صبر کنید.</span>';
+
+            try {
+                // تبدیل فایل انتخاب شده به آرایه‌ای از بایت‌ها (ArrayBuffer) که مرورگر می‌فهمد
+                const arrayBuffer = await file.arrayBuffer();
+
+                // بارگذاری سند PDF
+                const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+                let fullText = '';
+
+                // حلقه برای خواندن تمام صفحات (از صفحه ۱ تا آخر)
+                for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+                    const page = await pdfDocument.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+
+                    // چسباندن کلمات یک صفحه به هم
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += `--- صفحه ${pageNum} ---\n${pageText}\n\n`;
+                }
+
+                // تزریق متن به DOM
+                outputDiv.textContent = fullText;
+
+            } catch (error) {
+                console.error("خطا در خواندن فایل:", error);
+                outputDiv.innerHTML = '<span style="color:red;">خطایی رخ داد! آیا فایل واقعاً PDF است؟</span>';
+            }
+        });
+    </script>
+
+</body>
+
+</html>

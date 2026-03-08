@@ -1,169 +1,75 @@
-function greet(name, callback) {
-    console.log("Hi " + name);
-    callback();
-}
+// const obj = {
 
-greet("Amir", function () {
-    console.log("Done greeting!");
-});
+//     a: "sd"
+// }
 
 
-console.log("ddd")
+// const { a } = obj
 
+// a == "df"
 
-import { PDFParse } from "pdf-parse";
-
-
-// --- استخراج صفحات PDF ---
-async function extractPDFPages(path) {
-    const parser = new PDFParse({ url: path });
-    const result = await parser.getText();
-    return result.pages;
-}
+// console.log(obj)
 
 
 
+// const moduleA = {
+//     count: {
+//         a: 1,
+//         b: 2
+//     }
+// };
 
-function buildPrompt(text) {
+// const moduleB = {};
 
-    return `
-You are an expert linguistic extraction system for English language learners.
+// Object.defineProperty(moduleB, "count", {
+//     get() {
+//         return moduleA.count; // فقط یک getter داریم
+//     },
+//     // writable: true, // اگر این را بگذاریم، صراحتاً غیر قابل نوشتن می‌شود
+//     // configurable: true
+// });
 
-Your task is to analyze the following English text and extract vocabulary items that are:
+// moduleB.count.a = 10
+// console.log(moduleA.count)
 
-- Useful for learning
-- Advanced or uncommon
-- Actually present in the text
+// // console.log(moduleB.count)
 
-TEXT:
-"""
-${text}
-"""
+// // moduleB.count = "sd"
 
------------------------
-TASK INSTRUCTIONS
------------------------
 
-1. Extract vocabulary items that appear in the text.
-2. Each item MUST belong to **exactly one** of the allowed types below.
-3. Avoid duplicates.
-4. Maximum 40 items.
+// let a = {
+//     b: 10,
+//     c: 20
+// }
 
------------------------
-ALLOWED TYPES
------------------------
 
-word
-- Single word (noun, verb, adjective, adverb)
-- Examples: run, beautiful, quickly
+const B = {}
 
-phrasal verb
-- Verb + particle(s) or preposition(s)
-- Canonical form required
-- Examples: give up, look after, run into
+let _a = 10  // storage داخلی
 
-idiom
-- Fixed expression with figurative meaning
-- Examples: break the ice, hit the nail on the head
+Object.defineProperty(B, "a", {
+    get() {
+        return _a
+    },
+    set(value) {
+        _a = value
+    }
+})
 
-collocation
-- Words that naturally appear together
-- Examples: make a decision, heavy rain, strong coffee
+console.log(B.a)
+B.a = 80
+console.log(_a)
+_a = 60
+console.log(B.a)
 
-compound
-- Word formed by combining two or more words
-- Examples: toothbrush, mother-in-law, sunlight
 
-slang
-- Informal, casual words or phrases
-- Examples: cool, dude, gonna, wanna
+// «primitive snapshot vs object reference»
 
-proverb
-- Traditional short saying expressing common wisdom
-- Examples: Practice makes perfect, Better late than never
 
------------------------
-DO NOT EXTRACT
------------------------
 
-- Very common words: the, is, go, make, do, get, say, etc.
-- Names of people or places
-- Numbers
-- Programming syntax or variable names
-- Fragments of words
-- Words/phrases not present in the text
 
------------------------
-NORMALIZATION RULES
------------------------
 
-- verbs → base form
-- nouns → singular form
-- phrasal verbs → canonical form
-- idioms → exact fixed form
+1436550454
+1983890814
 
------------------------
-POS GUIDELINES
------------------------
-
-- word → noun, verb, adjective, adverb
-- phrasal verb → verb
-- idiom → phrase
-- collocation → phrase
-- compound → noun
-- slang → noun, adjective, or verb depending on context
-- proverb → proverb
-
------------------------
-OUTPUT REQUIREMENTS
------------------------
-
-Each item must contain:
-
-word: string
-type: string (must be exactly one of the allowed types)
-pos: string (part of speech following POS guidelines)
-translation: string (short Persian translation)
-example: string (short sentence, maximum 10 words)
-
------------------------
-STRICT JSON FORMAT
------------------------
-
-Return ONLY valid JSON, strictly following this format:
-
-{
- "items":[
-  {
-   "word":"string",
-   "type":"word | phrasal verb | idiom | collocation | compound | slang | proverb",
-   "pos":"noun | verb | adjective | adverb | phrase | proverb",
-   "translation":"string",
-   "example":"string"
-  }
- ]
-}
-
-Do not include explanations, comments, or text outside JSON.
-
------------------------
-EXAMPLE
------------------------
-
-Input text:
-He finally gave up smoking after many years.
-
-Output JSON:
-{
- "items":[
-  {
-   "word":"give up",
-   "type":"phrasal verb",
-   "pos":"verb",
-   "translation":"ترک کردن",
-   "example":"He gave up smoking."
-  }
- ]
-}
-`;
-}
+111623432

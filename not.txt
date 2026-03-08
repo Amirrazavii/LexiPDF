@@ -1,0 +1,11 @@
+import { config } from "./config.js"
+
+config.port = 9999
+
+
+در این کد چون ejs live binding هست به همه جا هایی که این کد را استفاده کردند اعمال می شود 
+
+بعضی پروژه ها export را فریز می کنند که نتوانند تغییر دهند 
+Object.freeze
+
+

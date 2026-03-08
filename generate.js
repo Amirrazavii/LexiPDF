@@ -208,7 +208,7 @@ phrasal verb
     word: string
     type: string(must be exactly one of the allowed types)
     pos: string(part of speech following POS guidelines)
-    translation: string(short Persian translation)
+    translation: string(english learning)
     example: string(short sentence, maximum 10 words)
 
     -----------------------
@@ -245,7 +245,7 @@ Output JSON:
                 "word": "give up",
                 "type": "phrasal verb",
                 "pos": "verb",
-                "translation": "ترک کردن",
+                "translation": "to stop doing something؛,
                 "example": "He gave up smoking."
             }
         ]

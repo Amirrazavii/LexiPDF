@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fa">
+
+<head>
+    <meta charset="UTF-8">
+    <title>تست ماژول ساده</title>
+</head>
+
+<body>
+    <h1>محاسبه مالیات</h1>
+
+    <!-- اصل اول: به مرورگر می‌گوییم که این یک اسکریپت معمولی نیست، یک ماژول است -->
+    <script type="module">
+        // اصل دوم: آدرس‌دهی باید با ./ یا / یا یک URL کامل شروع شود
+        import { calculateTax } from './math.js';
+
+        const finalPrice = calculateTax(1000);
+        console.log("قیمت نهایی با مالیات:", finalPrice);
+
+        // این کد کاملاً در مرورگر کار می‌کند و در کنسول چاپ می‌شود
+    </script>
+</body>
+
+</html>

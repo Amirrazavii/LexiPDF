@@ -1,0 +1,1 @@
+// mongoexport --db book_vocab --collection vocabularies --type=csv --fields word, translation --out words.csv
